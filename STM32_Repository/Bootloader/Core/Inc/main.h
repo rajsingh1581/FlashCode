@@ -54,6 +54,8 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void bootloader_app_init();
+void user_app_init();
 
 /* USER CODE END EFP */
 
