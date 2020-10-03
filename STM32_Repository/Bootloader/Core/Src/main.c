@@ -4,15 +4,35 @@
   * @file           : main.c
   * @brief          : Main program body
   ******************************************************************************
-  * @attention
+  ** This notice applies to any and all portions of this file
+  * that are not between comment pairs USER CODE BEGIN and
+  * USER CODE END. Other portions of this file, whether
+  * inserted by the user or by software development tools
+  * are owned by their respective copyright owners.
   *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
+  * COPYRIGHT(c) 2020 STMicroelectronics
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
   */
@@ -20,6 +40,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include<stdarg.h>
+#include<string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -33,6 +55,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define D_UART &huart2
+#define B_UART &huart1
+#define BL_DEBUG_MSG_EN
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -54,15 +79,50 @@ UART_HandleTypeDef huart2;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_CRC_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_CRC_Init(void);
+void debug(char *str);
+void bootloader(char *str);
+static void debugprint(char *format, ...);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void debug(char *str)
+{
+	HAL_UART_Transmit(D_UART, (uint8_t*)str, strlen(str), HAL_MAX_DELAY);
+}
 
+
+void bootloader(char *str)
+{
+	HAL_UART_Transmit(B_UART, (uint8_t*)str, strlen(str), HAL_MAX_DELAY);
+}
+
+void debugprint(char *format, ...)
+{
+#ifdef BL_DEBUG_MSG_EN
+	char str[1000];
+	/*Extract the arguments list using Va apis */
+	va_list args;
+	va_start(args, format);
+	vsprintf(str, format, args);
+	HAL_UART_Transmit(D_UART, (uint8_t*)str, strlen(str), HAL_MAX_DELAY);
+#endif
+}
+
+
+void bootloader_app_init()
+{
+
+}
+
+void user_app_init()
+{
+
+}
 /* USER CODE END 0 */
 
 /**
@@ -74,7 +134,6 @@ int main(void)
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
-  
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -93,12 +152,13 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_USART2_UART_Init();
-  MX_CRC_Init();
-  MX_USART1_UART_Init();
+  MX_GPIO_Init();// We are using GPIO peripherals
+  MX_USART2_UART_Init();//UART2 peripheral for Debugging
+  MX_USART1_UART_Init();//UART1 peripheral for boot loader Command
+  MX_CRC_Init();//CRC we are using to check data correction
   /* USER CODE BEGIN 2 */
 
+  debugprint("\r\nBootloader Debug: HELLO! From Bootloader!\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -107,6 +167,19 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
+	  //bootloader("Hi, This is bootloader UART Testing\r\n");
+	  if(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_RESET)
+	  {
+		  debugprint("\r\nDebug==> Bootloader code is Running");
+		  bootloader_app_init();
+	  }
+
+	  else
+	  {
+		  debugprint("\r\nDebug==> USER code is Running");
+		  user_app_init();
+	  }
+	  //HAL_Delay(5000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -121,11 +194,11 @@ void SystemClock_Config(void)
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** Configure the main internal regulator output voltage 
+  /**Configure the main internal regulator output voltage
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /**Initializes the CPU, AHB and APB busses clocks
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
@@ -141,7 +214,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /**Initializes the CPU, AHB and APB busses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
