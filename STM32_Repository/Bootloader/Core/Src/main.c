@@ -59,6 +59,7 @@
 #define D_UART &huart2
 #define B_UART &huart1
 #define BL_DEBUG_MSG_EN
+#define BL_RX_LEN 1000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -73,6 +74,7 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+uint8_t bl_rx_buff[BL_RX_LEN];
 
 /* USER CODE END PV */
 
@@ -114,12 +116,11 @@ void debugprint(char *format, ...)
 #endif
 }
 
-
 void bootloader_app_init()
 {
 	debugprint("\r\ndebug==>Bootloader Jump to Bootloader Code:");
-
 }
+
 
 void user_app_init()
 {
@@ -210,6 +211,74 @@ int main(void)
   /* USER CODE END 3 */
 }
 
+
+
+void bootloader_RX_Buffer()
+{
+	uint8_t rcv_len = 0;
+
+	while(1)
+	{
+		memset(bl_rx_buff, 0, BL_RX_LEN);
+		//here we will read and decode the coomands coming from host
+		//first read only one byte from the host, which is the "length" field of the command packet
+		HAL_UART_Receive(B_UART, &bl_rx_buff[1], 1, HAL_MAX_DELAY);
+		rcv_len = bl_rx_buff[0];
+		HAL_UART_Receive(B_UART, &bl_rx_buff[1], rcv_len, HAL_MAX_DELAY);
+
+		switch(bl_rx_buff[1])
+		{
+			case BL_GET_VER:
+				bootloader_handle_getver_cmd(bl_rx_buff);
+				break;
+
+			case BL_GET_HELP:
+				bootloader_handle_gethelp_cmd(bl_rx_buff);
+				break;
+
+			case BL_GET_CID:
+				bootloader_handle_getcid_cmd(bl_rx_buff);
+				break;
+
+			case BL_GET_RDP_STATUS:
+				bootloader_handle_getrdp_cmd(bl_rx_buff);
+				break;
+
+			case BL_GO_TO_ADDR:
+				bootloader_handle_go_cmd(bl_rx_buff);
+				break;
+
+			case BL_FLASH_ERASE:
+				bootloader_handle_flash_erase_cmd(bl_rx_buff);
+				break;
+
+			case BL_MEM_WRITE:
+				bootloader_handle_mem_write_cmd(bl_rx_buff);
+				break;
+
+			case BL_ENDIS_RW_PROTECT:
+				bootloader_handle_endis_rw_protect(bl_rx_buff);
+				break;
+
+			case BL_READ_SECTOR_STATUS:
+				bootloader_handle_read_sector_status(bl_rx_buff);
+				break;
+
+			case BL_OTP_READ:
+				bootloader_handle_read_otp(bl_rx_buff);
+				break;
+
+			/*case BL_DIS_RW_PROTECT:
+				bootloader_handle_dis_rw_protect(bl_rx_buff);
+				break;*/
+
+			default:
+				debugprint("\r\nDebug==> Invalid command Received from serial host.....");
+				break;
+		}
+	}
+
+}
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -411,5 +480,62 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
+/************************************** IMPLMENTATION OF BOOTLOADER COMMAND HANDLE FUNCTIONS*************************************/
+void bootloader_handle_getver_cmd(uint8_t *buff)
+{
+
+}
+
+void bootloader_handle_gethelp_cmd(uint8_t *buff)
+{
+
+}
+
+void bootloader_handle_getcid_cmd(uint8_t *buff)
+{
+
+}
+
+void bootloader_handle_getrdp_cmd(uint8_t *buff)
+{
+
+}
+
+void bootloader_handle_go_cmd(uint8_t *buff)
+{
+
+}
+
+void bootloader_handle_flash_erase_cmd(uint8_t *buff)
+{
+
+}
+
+void bootloader_handle_mem_write_cmd(uint8_t *buff)
+{
+
+}
+
+void bootloader_handle_endis_rw_protect(uint8_t *buff)
+{
+
+}
+
+void bootloader_handle_read_sector_status(uint8_t *buff)
+{
+
+}
+
+void bootloader_handle_read_otp(uint8_t *buff)
+{
+
+}
+
+void bootloader_handle_dis_rw_protect(uint8_t *buff)
+{
+
+}
+
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
