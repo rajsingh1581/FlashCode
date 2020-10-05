@@ -85,7 +85,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_CRC_Init(void);
 void debug(char *str);
-void bootloader(char *str);
+void bootloader_uart_write_data(uint8_t *str, uint32_t len);
 static void debugprint(char *format, ...);
 /* USER CODE BEGIN PFP */
 
@@ -99,9 +99,9 @@ void debug(char *str)
 }
 
 
-void bootloader(char *str)
+void bootloader_uart_write_data(uint8_t *str, uint32_t len)
 {
-	HAL_UART_Transmit(B_UART, (uint8_t*)str, strlen(str), HAL_MAX_DELAY);
+	HAL_UART_Transmit(B_UART, str, len, HAL_MAX_DELAY);
 }
 
 void debugprint(char *format, ...)
@@ -119,6 +119,7 @@ void debugprint(char *format, ...)
 void bootloader_app_init()
 {
 	debugprint("\r\ndebug==>Bootloader Jump to Bootloader Code:");
+	bootloader_RX_Buffer();
 }
 
 
@@ -222,7 +223,7 @@ void bootloader_RX_Buffer()
 		memset(bl_rx_buff, 0, BL_RX_LEN);
 		//here we will read and decode the coomands coming from host
 		//first read only one byte from the host, which is the "length" field of the command packet
-		HAL_UART_Receive(B_UART, &bl_rx_buff[1], 1, HAL_MAX_DELAY);
+		HAL_UART_Receive(B_UART, bl_rx_buff, 1, HAL_MAX_DELAY);
 		rcv_len = bl_rx_buff[0];
 		HAL_UART_Receive(B_UART, &bl_rx_buff[1], rcv_len, HAL_MAX_DELAY);
 
@@ -484,7 +485,33 @@ void assert_failed(uint8_t *file, uint32_t line)
 /************************************** IMPLMENTATION OF BOOTLOADER COMMAND HANDLE FUNCTIONS*************************************/
 void bootloader_handle_getver_cmd(uint8_t *buff)
 {
+	uint8_t bl_version;
 
+	//1) verify the checksum
+	debugprint("\r\ndebug==> Bootloader handle getver cmd");
+
+	//Total length of the command packet
+	uint32_t command_packet_len = buff[0]+1;
+
+	//extract the CRC32 sent by the HOST
+	uint32_t host_crc = *((uint32_t *)(buff + command_packet_len - 4) );
+
+	if(! bootloader_verify_crc(&buff[0], command_packet_len - 4, host_crc))
+	{
+		debugprint("\r\ndebug==> checksum success !!");
+		//checksum is correct
+		bootloader_send_ack(buff[0],1);
+		bl_version = get_bootloader_version();
+		debugprint("\r\ndebug==> BL_VER :: %d %#x",bl_version,bl_version);
+		bootloader_uart_write_data(&bl_version,1);
+	}
+
+	else
+	{
+		debugprint("\r\ndebug==> CheckSum Fail !!");
+		//checksum is wrong send nack
+		bootloader_send_nack();
+	}
 }
 
 void bootloader_handle_gethelp_cmd(uint8_t *buff)
@@ -538,4 +565,45 @@ void bootloader_handle_dis_rw_protect(uint8_t *buff)
 }
 
 
+/*******************Functions to implement Send ACK and NCK*******************************/
+void bootloader_send_ack(uint8_t command_code, uint8_t follow_len)
+{
+	//Here we send 2 bytes.. first byte is ack and the second byte is len value
+	uint8_t ack_buf[2];
+	ack_buf[0] = BL_ACK;
+	ack_buf[1] = follow_len;
+	HAL_UART_Transmit(B_UART, ack_buf, 2, HAL_MAX_DELAY);
+}
+
+void bootloader_send_nack(void)
+{
+	uint8_t nack = BL_NACK;
+	HAL_UART_Transmit(B_UART, &nack, 1, HAL_MAX_DELAY);
+}
+
+
+/***********************This Function Verifies the CRC of the given buffer in pData.******/
+uint8_t bootloader_verify_crc(uint8_t *pData, uint32_t len, uint32_t crc_host)
+{
+	uint32_t uwCRCValue = 0xff;
+
+	for(uint32_t i=0; i<len; i++)
+	{
+		uint32_t i_data = pData[i];
+		uwCRCValue = HAL_CRC_Accumulate(&hcrc, &i_data, 1);
+	}
+
+	if( uwCRCValue == crc_host)
+	{
+		return VERIFY_CRC_SUCCESS;
+	}
+
+	return VERIFY_CRC_FAIL;
+}
+
+//Just returns the macro value
+uint8_t get_bootloader_version(void)
+{
+	return (uint8_t)BL_VERSION;
+}
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -73,7 +73,10 @@ void bootloader_handle_endis_rw_protect(uint8_t *buff);
 void bootloader_handle_read_sector_status(uint8_t *buff);
 void bootloader_handle_read_otp(uint8_t *buff);
 void bootloader_handle_dis_rw_protect(uint8_t *buff);
-
+void bootloader_send_ack(uint8_t command_code, uint8_t follow_len);
+void bootloader_send_nack(void);
+uint8_t bootloader_verify_crc(uint8_t *pData, uint32_t len, uint32_t crc_host);
+uint8_t get_bootloader_version(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -101,6 +104,8 @@ void bootloader_handle_dis_rw_protect(uint8_t *buff);
 /* Bootloader Command implementation is declared here
  *
  */
+//version 1.0
+#define BL_VERSION 0x10
 //our bootloader command
 
 //#define <command name> <command code>
@@ -140,7 +145,17 @@ void bootloader_handle_dis_rw_protect(uint8_t *buff);
 
 //This command is used to disable read write protection off mcu
 #define BL_DIS_RW_PROTECT 		0x5c
+
+/* ACK and NACK Bytes*/
+#define BL_ACK 0XA5
+#define BL_NACK 0x7E
+/* Check for CRC Verification Value */
+#define VERIFY_CRC_SUCCESS 	0
+#define VERIFY_CRC_FAIL 	1
+
 /* USER CODE END Private defines */
+
+
 
 #ifdef __cplusplus
 }
