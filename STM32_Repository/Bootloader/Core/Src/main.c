@@ -55,6 +55,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define FLASH_SECTOR2_BASE_ADDRESS 0x08008000
 #define D_UART &huart2
 #define B_UART &huart1
 #define BL_DEBUG_MSG_EN
@@ -116,12 +117,36 @@ void debugprint(char *format, ...)
 
 void bootloader_app_init()
 {
+	debugprint("\r\ndebug==>Bootloader Jump to Bootloader Code:");
 
 }
 
 void user_app_init()
 {
+	//just a function to hold the address of the reset handler of the user app.
+	void (*app_reset_handler)(void);
 
+	debugprint("\r\ndebug==>Bootloader Jump to User Code:");
+
+	//1. Configure the MSP by reading the value from the base address of the sector 2
+	uint32_t msp_value = *(volatile uint32_t *)FLASH_SECTOR2_BASE_ADDRESS;
+	debugprint("\r\ndebug==>MSP Value : %#x",msp_value);
+
+	//This function come from CMSIS
+	__set_MSP(msp_value);
+
+	//SCB->VTOR = FLASH_SECTOR1_BASE_ADDRESS;
+
+	/*2. Now Fetch the reset handler address of the user application
+	 * from the location FLASH_SECTOR_BASE_ADDRESS+4
+	 */
+	uint32_t resethandler_address = *(volatile uint32_t *)(FLASH_SECTOR2_BASE_ADDRESS + 4);
+	app_reset_handler = (void*) resethandler_address;
+
+	debugprint("\r\ndebug==> App reset handler addr : %#x",app_reset_handler);
+
+	//3. jump to reset handler of the application
+	app_reset_handler();
 }
 /* USER CODE END 0 */
 
