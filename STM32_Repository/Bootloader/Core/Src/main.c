@@ -554,6 +554,10 @@ void bootloader_handle_gethelp_cmd(uint8_t *buff)
 	}
 }
 
+/******************************************************************************************************
+ * Bootloader Get Chip ID Command is Implemented
+ * Chip ID is available on get_mcu_chip_id() function
+ * *****************************************************************************************************/
 
 void bootloader_handle_getcid_cmd(uint8_t *buff)
 {
@@ -583,9 +587,35 @@ void bootloader_handle_getcid_cmd(uint8_t *buff)
 	}
 }
 
+/******************************************************************************************************
+ * Bootloader Get Read Write Protection ON the chip available on a Option Bytes Memory Section
+ * *****************************************************************************************************/
+
 void bootloader_handle_getrdp_cmd(uint8_t *buff)
 {
+	uint8_t rdp_level = 0x00;
+	debugprint("\r\ndebug==> Bootloader Handle Get CID");
 
+	//Total Length of the command packet
+	uint32_t command_packet_len = buff[0]+1;
+
+	//extract the CRC32 sent by the Host
+	uint32_t host_crc = *((uint32_t*)(buff+command_packet_len - 4));
+
+	if(! bootloader_verify_crc(&buff[0], command_packet_len-4, host_crc))
+	{
+		debugprint("\r\ndebug==> CheckSum Success !!\n");
+		bootloader_send_ack(buff[0], 1);
+		rdp_level = get_flash_rdp_level();
+		debugprint("\r\ndebug==>RDP Level: %d %#x",rdp_level, rdp_level);
+		bootloader_uart_write_data(&rdp_level, 1);
+	}
+
+	else
+	{
+		debugprint("\r\ndebug==> CheckSum Fail !!");
+		bootloader_send_nack();
+	}
 }
 
 void bootloader_handle_go_cmd(uint8_t *buff)
@@ -679,5 +709,19 @@ uint16_t get_mcu_chip_id(void)
 	uint16_t cid;
 	cid = (uint16_t)(DBGMCU->IDCODE) & 0x0FFF;
 	return cid;
+}
+
+uint8_t get_flash_rdp_level(void)
+{
+	uint8_t rdp_status = 0;
+#if 0
+	FLASH_OBProgramInitTypeDef ob_handle;
+	HAL_FLASHEx_OBGetConfig(&ob_handle);
+	rdp_status = (uint8_t)ob_handle.RDPLevel;
+#else
+	volatile uint32_t *pOB_addr = (uint32_t*) 0x1FFFC000;
+	rdp_status = (uint8_t)(*pOB_addr >> 8);
+#endif
+	return rdp_status;
 }
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
