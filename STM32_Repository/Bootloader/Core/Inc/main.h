@@ -77,6 +77,7 @@ void bootloader_send_ack(uint8_t command_code, uint8_t follow_len);
 void bootloader_send_nack(void);
 uint8_t bootloader_verify_crc(uint8_t *pData, uint32_t len, uint32_t crc_host);
 uint8_t get_bootloader_version(void);
+uint16_t get_mcu_chip_id(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
