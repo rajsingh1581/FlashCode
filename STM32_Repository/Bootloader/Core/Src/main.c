@@ -594,7 +594,7 @@ void bootloader_handle_getcid_cmd(uint8_t *buff)
 void bootloader_handle_getrdp_cmd(uint8_t *buff)
 {
 	uint8_t rdp_level = 0x00;
-	debugprint("\r\ndebug==> Bootloader Handle Get CID");
+	debugprint("\r\ndebug==> Bootloader Handle Get Read Write Protection Level");
 
 	//Total Length of the command packet
 	uint32_t command_packet_len = buff[0]+1;
@@ -620,6 +620,61 @@ void bootloader_handle_getrdp_cmd(uint8_t *buff)
 
 void bootloader_handle_go_cmd(uint8_t *buff)
 {
+	uint32_t go_address =0;
+	uint8_t addr_valid = ADDR_VALID;
+	uint8_t addr_invalid = ADDR_INVALID;
+
+	debugprint("\r\ndebug==> Bootloader Handle Go Command");
+
+		//Total Length of the command packet
+		uint32_t command_packet_len = buff[0]+1;
+
+		//extract the CRC32 sent by the Host
+		uint32_t host_crc = *((uint32_t*)(buff+command_packet_len - 4));
+
+		if(! bootloader_verify_crc(&buff[0], command_packet_len-4, host_crc))
+		{
+			debugprint("\r\ndebug==> CheckSum Success !!\n");
+			bootloader_send_ack(buff[0], 1);
+
+			//extract the go address
+			go_address = *((uint32_t*)&buff[2]);
+			debugprint("\r\ndebug==> Go Addr :: %#x", go_address);
+
+			if( verify_address(go_address) == ADDR_VALID)
+			{
+				//tell host that address is fine
+				bootloader_uart_write_data(&addr_valid, 1);
+
+				/*jump to "go" address.
+				 * we don't care what is being done there.
+				 * host must ensure that valid code is present over thaere
+				 * Its not the duty of bootloader. So just trust and jump
+				 */
+				 /*Not doing the below line will result in hardfault eception From ARM Cortex M */
+				//watch : https://www.youtube.com/watch?v=VX_12SjnNhY
+
+				go_address += 1; //make T bit = 1
+
+				void (*lets_jump)(void) = (void *)go_address;
+				debugprint("\r\ndebug==> Jumping to go address !");
+				lets_jump();
+
+			}
+
+			else
+			{
+				debugprint("\r\ndebug==> Go Address INVALID!!");
+				//Tell Host address is invalid
+				bootloader_uart_write_data(&addr_invalid, 1);
+			}
+		}
+
+		else
+		{
+			debugprint("\r\ndebug==> CheckSum Fail !!");
+			bootloader_send_nack();
+		}
 
 }
 
@@ -715,7 +770,7 @@ uint8_t get_flash_rdp_level(void)
 {
 	uint8_t rdp_status = 0;
 #if 0
-	FLASH_OBProgramInitTypeDef ob_handle;
+	FLASH_OBProgramInitTypeDef ob_handle;//OB Means Option Bytes
 	HAL_FLASHEx_OBGetConfig(&ob_handle);
 	rdp_status = (uint8_t)ob_handle.RDPLevel;
 #else
@@ -723,5 +778,41 @@ uint8_t get_flash_rdp_level(void)
 	rdp_status = (uint8_t)(*pOB_addr >> 8);
 #endif
 	return rdp_status;
+}
+
+	//So, what are the valid addresses to which we can jump?
+	//Can we jump to system memory? yes
+	//Can we jump to sram1 memory? yes
+	//Can we jump to sram2 memory? yes
+	//Can we jump to backup sram memory? yes
+	//Can we jump to peripheral memory? its possible, but don't allow, so no
+	//Can we jump to external memory? yes
+
+uint8_t verify_address(uint32_t go_address)
+{
+//incomplete -poorly written .. optimize it
+	if(go_address >= SRAM_BASE_ADDR && go_address <= SRAM_END_ADDR)
+	{
+		return ADDR_VALID;
+	}
+
+	/*else if( go_address >= SRAM2_BASE && go_address <= SRAM2_END)
+	{
+		return ADDR_VALID;
+	}*/
+
+	else if( go_address >= FLASH_BASE_ADDR && go_address <= FLASH_END_ADDR)
+	{
+		return ADDR_VALID;
+	}
+
+	/*else if( go_address >= BKPSRAM_BASE && go_address <= BKPSRAM_END)
+	{
+		return ADDR_VALID;
+	}*/
+
+	else
+		return ADDR_INVALID;
+
 }
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

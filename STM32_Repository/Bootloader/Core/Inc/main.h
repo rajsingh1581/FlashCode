@@ -79,6 +79,7 @@ uint8_t bootloader_verify_crc(uint8_t *pData, uint32_t len, uint32_t crc_host);
 uint8_t get_bootloader_version(void);
 uint16_t get_mcu_chip_id(void);
 uint8_t get_flash_rdp_level(void);
+uint8_t verify_address(uint32_t go_address);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -147,6 +148,22 @@ uint8_t get_flash_rdp_level(void);
 
 //This command is used to disable read write protection off mcu
 #define BL_DIS_RW_PROTECT 		0x5c
+
+/*Check for Address Valid*/
+//SRAM Address Starting to End ADDRESS
+#define SRAM_SIZE 32*1024
+#define SRAM_BASE_ADDR 0x20000000
+#define SRAM_END_ADDR  (SRAM1_BASE + SRAM_SIZE)
+
+//FLASH Address Starting to End ADDRESS
+//FLASH Starting address to End Address
+#define FLASH_SIZE 128*1024
+#define FLASH_BASE_ADDR 0x08000000
+#define FLASH_END_ADDR  (FLASH_BASE_ADDR + FLASH_SIZE)
+
+//Check Valid AND Invalid Address locations
+#define ADDR_VALID   0x00
+#define ADDR_INVALID 0x01
 
 /* ACK and NACK Bytes*/
 #define BL_ACK 0XA5
