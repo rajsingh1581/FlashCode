@@ -62,7 +62,7 @@ clean:
 	-@echo ' '
 
 post-build:
-	arm-none-eabi-objcopy -O ihex UserApplication.elf UserApplication.hex
+	arm-none-eabi-objcopy -O binary UserApplication.elf UserApplication.bin
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)

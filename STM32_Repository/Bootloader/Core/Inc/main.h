@@ -80,6 +80,8 @@ uint8_t get_bootloader_version(void);
 uint16_t get_mcu_chip_id(void);
 uint8_t get_flash_rdp_level(void);
 uint8_t verify_address(uint32_t go_address);
+uint8_t execute_flash_erase(uint8_t sector_number, uint8_t no_of_sector);
+uint8_t execute_mem_write(uint8_t *pBuffer, uint32_t mem_address, uint32_t len);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -164,6 +166,10 @@ uint8_t verify_address(uint32_t go_address);
 //Check Valid AND Invalid Address locations
 #define ADDR_VALID   0x00
 #define ADDR_INVALID 0x01
+
+//Check Valid Address of Sector Erase/Write
+#define INVALID_SECTOR 0x04
+
 
 /* ACK and NACK Bytes*/
 #define BL_ACK 0XA5

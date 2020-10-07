@@ -202,25 +202,25 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+ // while (1)
+  //{
     /* USER CODE END WHILE */
 
 	  //bootloader("Hi, This is bootloader UART Testing\r\n");
 	  if(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_RESET)
 	  {
-		  debugprint("\r\nDebug==> Bootloader code is Running");
+		  debugprint("\r\ndebug==> Bootloader code is Running");
 		  bootloader_app_init();
 	  }
 
 	  else
 	  {
-		  debugprint("\r\nDebug==> USER code is Running");
+		 //debugprint("\r\nDebug==> USER code is Running");
 		  user_app_init();
 	  }
 	  //HAL_Delay(5000);
     /* USER CODE BEGIN 3 */
-  }
+  //}
   /* USER CODE END 3 */
 }
 
@@ -286,7 +286,7 @@ void bootloader_RX_Buffer()
 				break;*/
 
 			default:
-				debugprint("\r\nDebug==> Invalid command Received from serial host.....");
+				debugprint("\r\ndebug==> Invalid command Received from serial host.....");
 				break;
 		}
 	}
@@ -503,12 +503,12 @@ void bootloader_handle_getver_cmd(uint8_t *buff)
 	debugprint("\r\ndebug==> Bootloader handle getver cmd");
 
 	//Total length of the command packet
-	uint32_t command_packet_len = buff[0]+1;
+	uint32_t command_packet_len = bl_rx_buff[0]+1;
 
 	//extract the CRC32 sent by the HOST
-	uint32_t host_crc = *((uint32_t *)(buff + command_packet_len - 4) );
+	uint32_t host_crc = *((uint32_t *)(bl_rx_buff + command_packet_len - 4) );
 
-	if(! bootloader_verify_crc(&buff[0], command_packet_len - 4, host_crc))
+	if(! bootloader_verify_crc(&bl_rx_buff[0], command_packet_len - 4, host_crc))
 	{
 		debugprint("\r\ndebug==> checksum success !!");
 		//checksum is correct
@@ -535,12 +535,12 @@ void bootloader_handle_gethelp_cmd(uint8_t *buff)
 	debugprint("\r\ndebug==> Bootloader Handle Get Help");
 
 	//Total Length of the command packet
-	uint32_t command_packet_len = buff[0]+1;
+	uint32_t command_packet_len = bl_rx_buff[0]+1;
 
 	//extract the CRC32 sent by the Host
-	uint32_t host_crc = *((uint32_t*)(buff+command_packet_len - 4));
+	uint32_t host_crc = *((uint32_t*)(bl_rx_buff+command_packet_len - 4));
 
-	if(! bootloader_verify_crc(&buff[0], command_packet_len-4, host_crc))
+	if(! bootloader_verify_crc(&bl_rx_buff[0], command_packet_len-4, host_crc))
 	{
 		debugprint("\r\ndebug==> CheckSum Success !!\n");
 		bootloader_send_ack(buff[0], sizeof(supported_commands));
@@ -565,12 +565,12 @@ void bootloader_handle_getcid_cmd(uint8_t *buff)
 	debugprint("\r\ndebug==> Bootloader Handle Get CID");
 
 	//Total Length of the command packet
-	uint32_t command_packet_len = buff[0]+1;
+	uint32_t command_packet_len = bl_rx_buff[0]+1;
 
 	//extract the CRC32 sent by the Host
-	uint32_t host_crc = *((uint32_t*)(buff+command_packet_len - 4));
+	uint32_t host_crc = *((uint32_t*)(bl_rx_buff+command_packet_len - 4));
 
-	if(! bootloader_verify_crc(&buff[0], command_packet_len-4, host_crc))
+	if(! bootloader_verify_crc(&bl_rx_buff[0], command_packet_len-4, host_crc))
 	{
 		debugprint("\r\ndebug==> CheckSum Success !!\n");
 		bootloader_send_ack(buff[0], sizeof(supported_commands));
@@ -597,12 +597,12 @@ void bootloader_handle_getrdp_cmd(uint8_t *buff)
 	debugprint("\r\ndebug==> Bootloader Handle Get Read Write Protection Level");
 
 	//Total Length of the command packet
-	uint32_t command_packet_len = buff[0]+1;
+	uint32_t command_packet_len = bl_rx_buff[0]+1;
 
 	//extract the CRC32 sent by the Host
-	uint32_t host_crc = *((uint32_t*)(buff+command_packet_len - 4));
+	uint32_t host_crc = *((uint32_t*)(bl_rx_buff+command_packet_len - 4));
 
-	if(! bootloader_verify_crc(&buff[0], command_packet_len-4, host_crc))
+	if(! bootloader_verify_crc(&bl_rx_buff[0], command_packet_len-4, host_crc))
 	{
 		debugprint("\r\ndebug==> CheckSum Success !!\n");
 		bootloader_send_ack(buff[0], 1);
@@ -627,12 +627,12 @@ void bootloader_handle_go_cmd(uint8_t *buff)
 	debugprint("\r\ndebug==> Bootloader Handle Go Command");
 
 		//Total Length of the command packet
-		uint32_t command_packet_len = buff[0]+1;
+		uint32_t command_packet_len = bl_rx_buff[0]+1;
 
 		//extract the CRC32 sent by the Host
-		uint32_t host_crc = *((uint32_t*)(buff+command_packet_len - 4));
+		uint32_t host_crc = *((uint32_t*)(bl_rx_buff+command_packet_len - 4));
 
-		if(! bootloader_verify_crc(&buff[0], command_packet_len-4, host_crc))
+		if(! bootloader_verify_crc(&bl_rx_buff[0], command_packet_len-4, host_crc))
 		{
 			debugprint("\r\ndebug==> CheckSum Success !!\n");
 			bootloader_send_ack(buff[0], 1);
@@ -678,14 +678,94 @@ void bootloader_handle_go_cmd(uint8_t *buff)
 
 }
 
+/* Helper Function to handle BL_FLASH_ERASE Command */
 void bootloader_handle_flash_erase_cmd(uint8_t *buff)
 {
+	uint8_t erase_status = 0x00;
+	debugprint("\r\ndebug==> Bootloader Handle Flash Erase Command");
 
+	//Total length of the command packet
+	uint32_t command_packet_len = bl_rx_buff[0]+1;
+
+	//extract the CRC32 sent by the Host
+	uint32_t host_crc = *((uint32_t*)(bl_rx_buff+command_packet_len - 4));
+
+	if(! bootloader_verify_crc(&bl_rx_buff[0], command_packet_len-4, host_crc))
+	{
+		debugprint("\r\ndebug==> CheckSum Success !!\n");
+		bootloader_send_ack(buff[0], 1);
+
+		debugprint("\r\ndebug==> Initial Sector : %d no of Sectors :: %d",buff[2], buff[3]);
+
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+		erase_status = execute_flash_erase(buff[2], buff[3]);
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+		debugprint("\r\ndebug==> Flash erase status :: %#x",erase_status);
+
+		bootloader_uart_write_data(&erase_status, 1);
+	}
+
+	else
+	{
+		debugprint("\r\ndebug==> CheckSum Fail !!");
+		bootloader_send_nack();
+	}
 }
 
 void bootloader_handle_mem_write_cmd(uint8_t *buff)
 {
+	uint8_t addr_valid = ADDR_VALID;
+	uint8_t write_status = 0x00;
+	uint8_t chksum = 0, len = 0;
+	len = buff[0];
+	uint8_t payload_len = buff[6];
 
+	uint32_t mem_address = *((uint32_t *) (&buff[2]));
+
+	chksum = buff[len];
+
+	debugprint("\r\ndebug==> Bootloader Handle Mem Write Command");
+
+	//Total length of the command packet
+	uint32_t command_packet_len = bl_rx_buff[0]+1;
+
+	//extract the CRC32 sent by the Host
+	uint32_t host_crc = *((uint32_t*)(bl_rx_buff+command_packet_len - 4));
+
+	if(! bootloader_verify_crc(&bl_rx_buff[0], command_packet_len-4, host_crc))
+	{
+		debugprint("\r\ndebug==> CheckSum Success !!\n");
+		bootloader_send_ack(buff[0], 1);
+
+		debugprint("\r\ndebug==> Memory write address :: %#x",mem_address);
+
+		if(verify_address(mem_address) == ADDR_VALID)
+		{
+			debugprint("\r\ndebug==> Valid memory Write Address");
+
+			//Glow the led to indicate bootloader is currently writing to memory
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+
+			//execute memory write
+			write_status = execute_mem_write(&buff[7], mem_address,payload_len);
+
+			//inform host about the status
+			bootloader_uart_write_data(&write_status, 1);
+		}
+		else
+		{
+			debugprint("\r\ndebug==> Invalid Memory Write Address");
+			write_status = ADDR_INVALID;
+			bootloader_uart_write_data(&write_status, 1);
+		}
+	}
+
+	else
+	{
+		debugprint("\r\ndebug==> CheckSum Fail !!");
+		bootloader_send_nack();
+	}
 }
 
 void bootloader_handle_endis_rw_protect(uint8_t *buff)
@@ -737,6 +817,9 @@ uint8_t bootloader_verify_crc(uint8_t *pData, uint32_t len, uint32_t crc_host)
 		uwCRCValue = HAL_CRC_Accumulate(&hcrc, &i_data, 1);
 	}
 
+	/*Reset CRC Calculation Unit */
+	__HAL_CRC_DR_RESET(&hcrc);
+
 	if( uwCRCValue == crc_host)
 	{
 		return VERIFY_CRC_SUCCESS;
@@ -752,8 +835,6 @@ uint8_t get_bootloader_version(void)
 }
 
 //Read the chip identifier or device Identifier
-uint16_t get_mcu_chip_id(void)
-{
 /**************************************************************************************
  * The STM32F410XX MCUs integrate MCU ID code. This ID identifies the ST MCU Part no
  * and the die revision. It is part of the DBG_MCU component and is mapped on
@@ -761,6 +842,8 @@ uint16_t get_mcu_chip_id(void)
  * JTAG debug pCat.2ort (4 to 5 pins) or the SW debug port (two pins) or by the
  * It is even accessible while the MCU is under system reset.
  ***************************************************************************************/
+uint16_t get_mcu_chip_id(void)
+{
 	uint16_t cid;
 	cid = (uint16_t)(DBGMCU->IDCODE) & 0x0FFF;
 	return cid;
@@ -780,13 +863,13 @@ uint8_t get_flash_rdp_level(void)
 	return rdp_status;
 }
 
-	//So, what are the valid addresses to which we can jump?
-	//Can we jump to system memory? yes
-	//Can we jump to sram1 memory? yes
-	//Can we jump to sram2 memory? yes
-	//Can we jump to backup sram memory? yes
-	//Can we jump to peripheral memory? its possible, but don't allow, so no
-	//Can we jump to external memory? yes
+//So, what are the valid addresses to which we can jump?
+//Can we jump to system memory? yes
+//Can we jump to sram1 memory? yes
+//Can we jump to sram2 memory? yes
+//Can we jump to backup SRAM memory? yes
+//Can we jump to peripheral memory? its possible, but don't allow, so no
+//Can we jump to external memory? yes
 
 uint8_t verify_address(uint32_t go_address)
 {
@@ -815,4 +898,86 @@ uint8_t verify_address(uint32_t go_address)
 		return ADDR_INVALID;
 
 }
+
+uint8_t execute_flash_erase(uint8_t sector_number, uint8_t no_of_sector)
+{
+	//we have totally 5 sectors in STM32F410RB MCU... sector[0..4]
+	//Number_of_sector has to be in the range of 0 to 4
+	//if sector_number = 0xff, That means mass erase!
+	//Code needs to modified if your MCU supports more flash sectors
+	FLASH_EraseInitTypeDef flashErase_handle;
+	uint32_t sectorError;
+	HAL_StatusTypeDef status;
+
+	if(no_of_sector > 5)
+		return INVALID_SECTOR;
+
+	if((sector_number == 0xff)||(sector_number <= 4))
+	{
+		if(sector_number == (uint8_t)0xff)
+		{
+			debugprint("\r\ndebug==> Entering into Mass Erase Mode");
+			flashErase_handle.TypeErase = FLASH_TYPEERASE_MASSERASE;
+			/* Check the parameters */
+			/*assert_param(IS_VOLTAGERANGE(VoltageRange));
+			assert_param(IS_FLASH_BANK(Banks));*/
+
+			/* If the previous operation is completed, proceed to erase all sectors */
+			/*CLEAR_BIT(FLASH->CR, FLASH_CR_PSIZE);
+			FLASH->CR |= FLASH_CR_MER;
+			FLASH->CR |= FLASH_CR_STRT | ((uint32_t)FLASH_VOLTAGE_RANGE_3 <<8U);*/
+		}
+
+		else
+		{
+			/*Here we are just calculating how many sectors needs to erase*/
+			uint8_t remaining_sector = 5 - sector_number;
+			debugprint("debug==> Entering into Sector Erase Mode");
+			if(no_of_sector > remaining_sector)
+			{
+				no_of_sector = remaining_sector;
+			}
+
+			flashErase_handle.TypeErase = FLASH_TYPEERASE_SECTORS;
+			flashErase_handle.Sector    = sector_number;//This is initial value of sector
+			flashErase_handle.NbSectors = no_of_sector;
+		}
+
+		flashErase_handle.Banks = FLASH_BANK_1;
+
+		/*Get Access to touch the flash registers */
+		HAL_FLASH_Unlock();
+		flashErase_handle.VoltageRange = FLASH_VOLTAGE_RANGE_3;// our MCU is in nthe voltage range of 2.7V to 3.6V
+		status = (uint8_t)HAL_FLASHEx_Erase(&flashErase_handle, &sectorError);
+		HAL_FLASH_Lock();
+
+		return status;
+	}
+
+	return INVALID_SECTOR;
+}
+
+
+/* This function writes the contents of pBuffer to *mem_address" byte by byte */
+//Note1 : Currently this function supports writing to Flash only.
+//Note2 : This function does not check whether "mem_address" is a valid address
+uint8_t execute_mem_write(uint8_t *pBuffer, uint32_t mem_address, uint32_t len)
+{
+	uint8_t status = HAL_OK;
+
+	//We have to unlock flash module to get control of registers
+	HAL_FLASH_Unlock();
+
+	for(uint32_t i = 0; i < len; i++)
+	{
+		//Here we program the flash byte by byte
+		status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, mem_address + 1, pBuffer[i]);
+	}
+
+	HAL_FLASH_Lock();
+
+	return status;
+}
+
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
